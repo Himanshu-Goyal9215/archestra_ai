@@ -13,7 +13,7 @@ export const Sidebar = () => {
 
     const menuItems = [
         { href: '/', label: 'Overview', icon: Home },
-        { href: '/finance', label: 'Finance Agent', icon: LineChart },
+        { href: '/finance', label: 'Financial Advisor', icon: LineChart },
         { href: '/schedule', label: 'Schedule Agent', icon: Calendar },
         { href: '/health', label: 'Health Agent', icon: Activity },
         { href: '/shopping', label: 'Shopping Assistant', icon: ShoppingCart },
