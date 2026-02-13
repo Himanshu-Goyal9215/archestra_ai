@@ -78,18 +78,14 @@ export async function POST(req: Request) {
             assistantText = 'No response received from the agent.';
         }
 
-        // Return as a streaming text response compatible with useChat
-        // The AI SDK useChat hook can parse this format
+        // Return as a streaming text response compatible with our frontend parser
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
             start(controller) {
-                // Send the text as a data stream protocol message
-                // Format: 0:"text chunk"\n
-                const chunks = assistantText.match(/.{1,100}/g) || [assistantText];
-                for (const chunk of chunks) {
-                    const escaped = JSON.stringify(chunk);
-                    controller.enqueue(encoder.encode(`0:${escaped}\n`));
-                }
+                // Send the entire text as a single data stream message
+                // Format: 0:"text"\n — preserves all newlines and markdown formatting
+                const escaped = JSON.stringify(assistantText);
+                controller.enqueue(encoder.encode(`0:${escaped}\n`));
                 // Send finish message
                 controller.enqueue(encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n`));
                 controller.close();

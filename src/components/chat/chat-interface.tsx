@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Bot, User } from 'lucide-react';
-import { ScrapeWidget } from '@/components/widgets/scrape-widget';
 import { PERSONAS } from '@/hooks/use-archestra-chat';
 
 interface ChatMessage {
@@ -59,14 +60,12 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                 return;
             }
 
-            // Parse the data stream response: lines like 0:"text chunk"\n
             const responseText = await res.text();
             let fullText = '';
 
             for (const line of responseText.split('\n')) {
                 if (line.startsWith('0:')) {
                     try {
-                        // Each line is 0:"json escaped string"
                         const jsonStr = line.slice(2);
                         fullText += JSON.parse(jsonStr);
                     } catch {
@@ -112,15 +111,15 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                 )}
                 {messages.map((m) => (
                     <div key={m.id} className={`flex flex-col gap-2 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                        <div className={`flex gap-3 max-w-[90%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`flex gap-3 max-w-[95%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                             {m.role !== 'user' && (
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
-                                    <Bot size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0 mt-1">
+                                    <Bot size={14} className="text-indigo-600 dark:text-indigo-400" />
                                 </div>
                             )}
                             {m.role === 'user' && (
-                                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
-                                    <User size={16} className="text-blue-600 dark:text-blue-400" />
+                                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0 mt-1">
+                                    <User size={14} className="text-blue-600 dark:text-blue-400" />
                                 </div>
                             )}
 
@@ -128,13 +127,21 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                                 ? 'bg-blue-600 text-white rounded-tr-none'
                                 : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-tl-none shadow-sm'
                                 }`}>
-                                <div className="whitespace-pre-wrap">{m.content}</div>
+                                {m.role === 'user' ? (
+                                    <div className="whitespace-pre-wrap">{m.content}</div>
+                                ) : (
+                                    <div className="chat-markdown">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {m.content}
+                                        </ReactMarkdown>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 ))}
                 {isLoading && (
-                    <div className="flex items-center gap-2 text-xs text-gray-400 ml-12">
+                    <div className="flex items-center gap-2 text-xs text-gray-400 ml-10">
                         <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
                         <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-75"></span>
                         <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-150"></span>
