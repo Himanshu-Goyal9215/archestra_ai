@@ -1,19 +1,24 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from 'react';
-import { useChat } from '@ai-sdk/react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Bot, User } from 'lucide-react';
+import { ScrapeWidget } from '@/components/widgets/scrape-widget';
+import { PERSONAS } from '@/hooks/use-archestra-chat';
+
+interface ChatMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+}
 
 export function ChatInterface({ agentId }: { agentId: string }) {
-    // @ts-expect-error - overriding types for v6 compatibility
-    const { messages, sendMessage, isLoading, append } = useChat({
-        api: '/api/chat',
-        body: { agentId },
-    } as any);
+    const realAgentId = (PERSONAS as any)[agentId] || agentId;
 
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -22,20 +27,74 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         }
     }, [messages]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim()) return;
+        if (!(input ?? '').trim() || isLoading) return;
 
-        const userMessage = { role: 'user', content: input };
+        const text = input.trim();
+        const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', content: text };
+
+        setMessages(prev => [...prev, userMsg]);
         setInput('');
+        setIsLoading(true);
 
-        // Try append first (standard), then sendMessage
-        if (append) {
-            await append(userMessage as any);
-        } else if (sendMessage) {
-            await sendMessage(userMessage as any);
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [...messages, { role: 'user', content: text }],
+                    agentId: realAgentId,
+                }),
+            });
+
+            if (!res.ok) {
+                const errText = await res.text();
+                const assistantMsg: ChatMessage = {
+                    id: `a-${Date.now()}`,
+                    role: 'assistant',
+                    content: `Error: ${res.status} - ${errText}`,
+                };
+                setMessages(prev => [...prev, assistantMsg]);
+                return;
+            }
+
+            // Parse the data stream response: lines like 0:"text chunk"\n
+            const responseText = await res.text();
+            let fullText = '';
+
+            for (const line of responseText.split('\n')) {
+                if (line.startsWith('0:')) {
+                    try {
+                        // Each line is 0:"json escaped string"
+                        const jsonStr = line.slice(2);
+                        fullText += JSON.parse(jsonStr);
+                    } catch {
+                        fullText += line.slice(2);
+                    }
+                }
+            }
+
+            if (fullText) {
+                const assistantMsg: ChatMessage = {
+                    id: `a-${Date.now()}`,
+                    role: 'assistant',
+                    content: fullText,
+                };
+                setMessages(prev => [...prev, assistantMsg]);
+            }
+        } catch (err: any) {
+            console.error("Failed to send message:", err);
+            const errMsg: ChatMessage = {
+                id: `e-${Date.now()}`,
+                role: 'assistant',
+                content: `Error: ${err.message || 'Failed to connect'}`,
+            };
+            setMessages(prev => [...prev, errMsg]);
+        } finally {
+            setIsLoading(false);
         }
-    };
+    }, [input, isLoading, messages, realAgentId]);
 
     return (
         <div className="flex flex-col h-full bg-white/50 dark:bg-gray-900/50">
@@ -51,24 +110,27 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                         <p>How can I help you today?</p>
                     </div>
                 )}
-                {messages.map((m: any) => (
-                    <div key={m.id} className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        {m.role !== 'user' && (
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
-                                <Bot size={16} className="text-indigo-600 dark:text-indigo-400" />
+                {messages.map((m) => (
+                    <div key={m.id} className={`flex flex-col gap-2 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                        <div className={`flex gap-3 max-w-[90%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                            {m.role !== 'user' && (
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
+                                    <Bot size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                            )}
+                            {m.role === 'user' && (
+                                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
+                                    <User size={16} className="text-blue-600 dark:text-blue-400" />
+                                </div>
+                            )}
+
+                            <div className={`p-3 rounded-2xl text-sm ${m.role === 'user'
+                                ? 'bg-blue-600 text-white rounded-tr-none'
+                                : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-tl-none shadow-sm'
+                                }`}>
+                                <div className="whitespace-pre-wrap">{m.content}</div>
                             </div>
-                        )}
-                        <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${m.role === 'user'
-                            ? 'bg-blue-600 text-white rounded-br-none'
-                            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-bl-none shadow-sm'
-                            }`}>
-                            {m.content}
                         </div>
-                        {m.role === 'user' && (
-                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
-                                <User size={16} className="text-blue-600 dark:text-blue-400" />
-                            </div>
-                        )}
                     </div>
                 ))}
                 {isLoading && (
@@ -85,10 +147,10 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                     <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Type a message..."
+                        placeholder={`Message ${agentId}...`}
                         className="flex-1 bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus-visible:ring-indigo-500"
                     />
-                    <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                    <Button type="submit" size="icon" disabled={isLoading || !input?.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                         <Send size={16} />
                     </Button>
                 </div>
