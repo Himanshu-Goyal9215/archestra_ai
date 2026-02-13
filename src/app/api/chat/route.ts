@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     const { messages } = body;
 
     // useChat may nest body params differently depending on AI SDK version
-    const agentId = body.agentId || body.body?.agentId || '107c6fa2-da65-4477-a369-29ef6c55ddb8';
+    const agentId = body.agentId || body.body?.agentId || process.env.NEXT_PUBLIC_SHOPPING_AGENT_ID || '';
 
     const gatewayBase = (process.env.ARCHESTRA_GATEWAY_URL || 'http://localhost:9000/v1').replace(/\/v1\/?$/, '');
     const apiKey = process.env.ARCHESTRA_API_KEY || 'dev-key';
