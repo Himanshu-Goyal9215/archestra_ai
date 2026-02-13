@@ -1,0 +1,81 @@
+version: '3.9'
+
+services:
+  archestra-gateway:
+    image: archestra/platform:latest
+    ports:
+      - "9000:9000" # Gateway API
+      - "3001:3000" # Archestra Dashboard (Mapped to 3001 to avoid conflict with Next.js)
+    environment:
+      - ARCHESTRA_QUICKSTART=true
+      - POSTGRES_URL=postgresql://postgres:pass@db:5432/archestra
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - archestra-data:/app/data
+    depends_on:
+      - db
+    networks:
+      - assistant-net
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=archestra
+      - POSTGRES_PASSWORD=pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - assistant-net
+
+  # Financial MCP: Crypto Data
+  # coingecko-mcp:
+  #   image: mcp/coingecko:latest
+  #   environment:
+  #     - COINGECKO_API_KEY=${COINGECKO_API_KEY}
+  #   networks:
+  #     - assistant-net
+
+  # Schedule MCP: Google Workspace (Standardized Docker entrypoint)
+  google-workspace-mcp:
+    image: ghcr.io/aaronsb/google-workspace-mcp:latest
+    ports:
+      - "8080:8080" # Required for OAuth callback
+    environment:
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    volumes:
+      - ./google-config:/app/config
+    networks:
+      - assistant-net
+
+  # Health MCP: Postgres + Python FastMCP bridge
+  # health-mcp:
+  #   image: mcp/health-agent:latest # Placeholder image, assuming built or available
+  #   environment:
+  #     - DATABASE_URL=postgresql://postgres:pass@db:5432/health
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - assistant-net
+
+  # Shopping MCP: Playwright Browser Isolation
+  # playwright-mcp:
+  #   image: mcp/playwright:latest
+  #   networks:
+  #     - assistant-net
+
+  # Firecrawl MCP: Website Scraping
+  # firecrawl-mcp:
+  #   image: mcp/firecrawl:latest
+  #   environment:
+  #     - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
+  #   networks:
+  #       - assistant-net
+
+networks:
+  assistant-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  archestra-data:

@@ -1,0 +1,254 @@
+﻿Integrated Architecture and Implementation Strategy for a Secure Personal AI Assistant: Orchestrating Archestra.ai, Multi-Server MCP, and Generative UI
+The paradigm of personal computing is undergoing a fundamental transformation as large language models move from isolated chatbots to integrated agentic systems capable of interacting with the physical and digital world. At the center of this shift is the need for a "Private Personal Assistant" that reconciles the vast capabilities of global models with the stringent privacy requirements of personal data. The architectural solution proposed herein leverages Archestra.ai as a containerized backend orchestrator for the Model Context Protocol (MCP), providing a secure, observable, and deterministic environment for agentic operations.1 This report provides an exhaustive technical blueprint for constructing such a system, encompassing a Docker-based backend strategy, a modern Next.js frontend architecture, and the high-precision prompts required to build the application using the Antigravity AI coding assistant.
+The Backend Orchestration Layer: Archestra.ai and the Model Context Protocol
+The foundational challenge in building a private assistant lies in managing the "MCP chaos" that arises when an agent must interface with multiple disparate tools and data sources.1 Archestra.ai addresses this by functioning as a Kubernetes-native and Docker-compatible orchestrator that centralizes MCP servers, secrets management, and tool-invocation policies.1 By isolating MCP servers within containers, Archestra mitigates the risk of data exfiltration and ensures that the primary language model can only interact with tools through a secure, non-probabilistic gateway.1
+Unified Gateway and SSE Streaming Architecture
+Communication between the assistant's client and the Archestra backend is facilitated through the Unified Gateway, which utilizes Server-Sent Events (SSE) to deliver real-time, streaming updates.4 Unlike traditional REST APIs, where the client must poll for updates, SSE maintains a persistent HTTP connection, allowing the server to push tokens, tool-call statuses, and intermediate results directly to the frontend as they are generated.4 This is critical for agentic workflows where a single user prompt may trigger a chain of internal operations, such as searching the web, querying a database, and synthesizing a response.7
+The Unified Gateway translates the frontend's intent into standardized JSON-RPC requests for the underlying MCP servers.9 This abstraction ensures that the frontend remains framework-agnostic while the backend manages the complexity of the Model Context Protocol. The performance of this gateway is optimized for high-throughput applications, maintaining a 95th percentile latency of approximately 45ms.1
+Security Mechanics: Dual LLM and Dynamic Tools
+A primary architect's concern when building an AI assistant is preventing "prompt injection" or "rogue agent" scenarios where untrusted data from an external tool might trick the model into executing unauthorized commands. Archestra.ai implements a "Dual LLM" sub-agent architecture to combat this.1 In this model, a secondary "guardian" LLM inspects and validates data from tools before it reaches the primary agent, ensuring that untrusted strings cannot be executed as commands.1
+Furthermore, the "Dynamic Tool Engine" enforces context-aware policies. If a request originates from an untrusted source, sensitive tools like execute_code or send_email are programmatically hidden from the agent's view.2 This multi-layered defense ensures that the assistant operates within a deterministic security perimeter, even when connected to the open web.1
+
+
+Feature
+	Description
+	Strategic Benefit
+	MCP Orchestrator
+	Centralized container management for tools
+	Reduces deployment complexity and secret sprawl 1
+	Dual LLM Sub-agent
+	Guardian model for input validation
+	Prevents data exfiltration via prompt injection 1
+	Dynamic Tools
+	Context-aware tool visibility
+	Enforces security boundaries during runtime 2
+	SSE Transport
+	Unidirectional real-time data push
+	Low-latency UI updates for agent lifecycles 4
+	Unified Gateway
+	Single entry point for all MCP interactions
+	Simplifies client-side integration and observability 3
+	Persona Research and Specialized MCP Server Integration
+To fulfill the requirements of a versatile personal assistant, the system must integrate specialized MCP servers for finance, scheduling, health, and commerce. Each persona is defined by a specific set of containerized servers running within the Archestra environment.11
+The Financial Advisor: Market Intelligence and Research
+The Financial Advisor persona relies on a combination of real-time market data and comprehensive web retrieval. The official CoinGecko MCP server serves as the primary data source for cryptocurrency metrics, offering over 76 tools to query real-time prices, historical OHLCV (Open, High, Low, Close, Volume) data, and DeFi pool analytics.13 This server supports both standard HTTP and SSE streaming, making it ideal for the assistant's architecture.13
+For traditional stock market data and portfolio analysis, the assistant integrates the portfolio-mcp server. Powered by Yahoo Finance, this server provides tools for calculating sophisticated risk metrics like the Sharpe ratio and conducting Monte Carlo simulations for price forecasting.15 To ensure the LLM's context window is not overwhelmed by large datasets, this server uses mcp-refcache to return data previews while storing the full results in a cache accessible via a reference ID.15
+Web research capabilities are provided by the Brave Search MCP server. This tool offers general web search, local business lookups, and AI-powered summarization through a single interface.16 It allows the Financial Advisor to find news articles and market sentiment that might explain price movements identified by the CoinGecko tools.18
+The Schedule Manager: Secure Workspace Orchestration
+The Schedule Manager persona is built upon the google-workspace-mcp server, which provides authenticated access to Gmail, Google Calendar, and Drive.20 Handling user-level OAuth is the primary challenge here. The server implements an OAuth 2.0 flow where the assistant generates an authorization URL, and the user completes the sign-in process via a browser.20 A dedicated callback server typically runs on port 8080 to receive the authorization code and exchange it for persistent access and refresh tokens.20
+For security, tokens are encrypted and stored locally within the server's configuration directory (~/.mcp/google-workspace-mcp).21 The server handles multi-account support, allowing the assistant to simultaneously manage work and personal schedules.23 This server is "FastMCP-based," ensuring that tool calls for listing events or drafting emails are executed with minimal latency.23
+The Health Coach: Persistent Biometric Syncing
+The Health Coach requires a sophisticated bridge between Apple Health’s mobile-exclusive data and the assistant’s backend database. Because Apple does not provide a direct cloud API for HealthKit, the recommended strategy involves the "Health Auto Export" application.25 This app is configured to run automations that periodically send JSON-formatted health metrics (steps, heart rate, sleep analysis) to a REST API endpoint hosted on the assistant’s backend.25
+This data is ingested into a PostgreSQL database, which is then queried by the apple-health-mcp server.27 This server utilizes DuckDB for high-performance analytical queries across years of historical health records.28 It includes tools for summarizing weekly activity, identifying sleep trends, and correlating heart rate patterns with workout intensity.27 Incremental delta processing ensures that only new exports are parsed, maintaining database efficiency.27
+The Shopping Assistant: Browser Automation and Retrieval
+The Shopping Assistant uses the Playwright MCP server to interact with e-commerce websites. Playwright is selected over Puppeteer because it provides structured "accessibility snapshots" of web pages, which are more easily interpreted by language models than raw HTML or vision-based screenshots.29 This allows the assistant to deterministically navigate to products, fill out search forms, and extract pricing data from complex, JavaScript-heavy sites.30
+The Shopping Assistant can also utilize the Brave Search MCP's "Local Business" and "AI Summary" tools to find reviews and merchant locations before using the browser to verify final stock availability.16
+Deployment Infrastructure: Docker-Compose Service Definition
+The following docker-compose.yml structure defines the integrated environment. It orchestrates the Archestra platform alongside the specialized MCP servers, ensuring they are connected via a dedicated internal network while maintaining isolation of their respective filesystems and secrets.11
+
+
+YAML
+
+
+
+
+version: '3.9'
+
+services:
+ archestra-gateway:
+   image: archestra/platform:latest
+   ports:
+     - "9000:9000" # Gateway API
+     - "3000:3000" # Archestra Dashboard
+   environment:
+     - ARCHESTRA_QUICKSTART=true
+     - POSTGRES_URL=postgresql://postgres:pass@db:5432/archestra
+   volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
+     - archestra-data:/app/data
+   depends_on:
+     - db
+   networks:
+     - assistant-net
+
+ db:
+   image: postgres:15-alpine
+   environment:
+     - POSTGRES_DB=archestra
+     - POSTGRES_PASSWORD=pass
+   volumes:
+     - pgdata:/var/lib/postgresql/data
+   networks:
+     - assistant-net
+
+ # Financial MCP: Crypto Data
+ coingecko-mcp:
+   image: mcp/coingecko:latest
+   environment:
+     - COINGECKO_API_KEY=${COINGECKO_API_KEY}
+   networks:
+     - assistant-net
+
+ # Schedule MCP: Google Workspace (Standardized Docker entrypoint)
+ google-workspace-mcp:
+   image: ghcr.io/aaronsb/google-workspace-mcp:latest
+   ports:
+     - "8080:8080" # Required for OAuth callback
+   environment:
+     - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+     - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+   volumes:
+     -./google-config:/app/config
+   networks:
+     - assistant-net
+
+ # Health MCP: Postgres + Python FastMCP bridge
+ health-mcp:
+   build: 
+     context:./health-agent
+     dockerfile: Dockerfile
+   environment:
+     - DATABASE_URL=postgresql://postgres:pass@db:5432/health
+   depends_on:
+     - db
+   networks:
+     - assistant-net
+
+ # Shopping MCP: Playwright Browser Isolation
+ playwright-mcp:
+   image: mcp/playwright:latest
+   networks:
+     - assistant-net
+
+networks:
+ assistant-net:
+   driver: bridge
+
+volumes:
+ pgdata:
+ archestra-data:
+
+This deployment strategy allows the assistant to scale horizontally. Additional MCP servers (e.g., Jira, Slack, or local filesystem access) can be added to the YAML configuration without modifying the primary gateway logic, facilitating a modular and extensible architecture.11
+Frontend Architecture: Next.js and the Generative UI Paradigm
+The frontend is a sophisticated Next.js application that goes beyond the standard chat interface to provide a "Generative UI" experience.34 The core philosophy is that the interface should adapt to the data returned by the agent, rendering rich, interactive widgets instead of raw text.34
+Technology Stack and State Management
+The application utilizes Next.js 14+ with the App Router and TypeScript for a high-performance, type-safe development experience.36 The UI is styled with Tailwind CSS and built upon Shadcn/UI and Radix UI components, ensuring accessibility and design consistency.37
+Streaming responses from the Archestra gateway are managed using the Vercel AI SDK, specifically the useChat hook.40 This SDK handles the complexity of SSE streams, including the parsing of partial messages and the execution of tool calls.41 When the agent initiates a tool call, the useChat hook provides the frontend with a part object that includes the toolName, its current state (e.g., calling or result), and any returned JSON data.8
+
+
+Library
+	Role
+	Specification
+	Next.js 14
+	Application Framework
+	App Router, RSC, Server Actions 36
+	Vercel AI SDK
+	Streaming & Agent Logic
+	useChat, streamText, tool 40
+	Shadcn/UI
+	Component Foundation
+	Radix-based, accessible primitives 39
+	Tremor
+	Analytical Visualization
+	High-level React components for charts 38
+	Lucide React
+	Iconography
+	Standardized agentic icons 45
+	The "Smart Component" System for Generative UI
+The assistant implements a registry of "Rich Widgets" that are triggered based on the output of specific MCP tools.8 When the useChat hook receives a tool result, the application looks up the corresponding component in a mapping table.8
+1. Financial Charts (Tremor/Recharts): For stock or crypto price queries (e.g., get_historical_data), the assistant renders an interactive line chart using Tremor.38 This allows the user to hover over data points to see specific values and dates, providing a far more useful experience than a text-based list of prices.46
+2. Calendar Day View (Shadcn): When the user asks about their schedule (e.g., list_workspace_calendar_events), the assistant renders a "Day View" widget.48 Built using Shadcn’s calendar blocks, this widget displays a vertical timeline of meetings, color-coded by event type, allowing for immediate visual comprehension of free time.45
+3. Product Comparison Grid (Shadcn Blocks): For shopping queries (e.g., puppeteer_navigate results), the assistant renders a comparison grid.50 Each product is shown in a card with its image, title, price, and a "decision-support" table highlighting differences in specifications.51
+Frontend Project Structure
+A structured directory is essential for maintaining the separation of concerns in a generative UI application.
+/my-assistant
+├── /app
+│ ├── /api
+│ │ └── /chat
+│ │ └── route.ts # Route handler for streaming logic
+│ ├── layout.tsx # Sidebar and global providers
+│ └── page.tsx # Main Chat interface
+├── /components
+│ ├── /chat
+│ │ ├── chat-interface.tsx # Main message loop
+│ │ └── message-part.tsx # Logic for rendering text vs widgets
+│ ├── /widgets
+│ │ ├── finance-widget.tsx # Tremor charts
+│ │ ├── schedule-widget.tsx # Calendar day view
+│ │ └── product-grid.tsx # Comparison cards
+│ └── /ui # Shadcn components
+├── /lib
+│ ├── archestra-client.ts # SDK connection and SSE parsing
+│ └── widget-registry.ts # Mapping tools to components
+└── /hooks
+└── use-archestra-chat.ts # Custom hook for tool state handling
+The "Antigravity" Build Prompts
+To automate the development of this system, three distinct, high-precision prompts have been crafted for the Antigravity AI coding assistant. These prompts are designed to be used sequentially, moving from foundational setup to the complex rendering logic.
+Prompt A (Setup): Scaffolding and Backend Integration
+"Scaffold a Next.js 14 project using the App Router, TypeScript, and Tailwind CSS. Install the @ai-sdk/react, ai, zod, and lucide-react libraries. Use the Shadcn/UI CLI to add the following components: button, card, input, table, calendar, and popover. Create a backend connection utility in lib/archestra-client.ts that handles authentication to an Archestra.ai Unified Gateway using a Bearer token. Implement a Next.js Route Handler at /api/chat that uses the streamText function from the Vercel AI SDK to proxy requests to the Archestra gateway. Configure the gateway request to include the X-Archestra-Agent-Id header based on a provided persona ID. Ensure that the project is configured for environment variables including ARCHESTRA_GATEWAY_URL and ARCHESTRA_API_KEY."
+Prompt B (The Chat Engine): Streaming and Persona Management
+"Build the main Chat Interface in app/page.tsx using the useChat hook. The interface should feature a sidebar for switching between four agent personas: 'Financial Advisor', 'Schedule Manager', 'Health Coach', and 'Shopping Assistant'. Each persona must send a unique agentId to the /api/chat endpoint. Implement the chat rendering loop to support 'Message Parts' as defined in AI SDK 4.2. Text tokens should be streamed into a Markdown component. When the agent initiates a tool call, display a 'Tool Invocation' status card that shows the tool name and an animated loading state while the call is in progress. Ensure the chat automatically scrolls to the bottom on new token arrivals."
+Prompt C (Generative Widgets): The Smart Component System
+"Create a 'Smart Component' system that detects tool results in the message stream and renders interactive widgets. Using the Tremor library, implement a FinanceWidget that takes a JSON array of date-price pairs and renders a LineChart. Implement a ScheduleWidget that takes a list of Google Calendar events and renders a timeline using a vertical layout within a Shadcn Card. Finally, build a ProductGridWidget that takes an array of shopping results (image, price, title) and renders them in a responsive 3-column grid of cards. In the main message part renderer, add a switch statement that inspects part.toolName. If the tool state is 'result', render the corresponding widget; otherwise, fall back to showing the tool input for debugging. Ensure all widgets are responsive and handle empty or malformed data gracefully."
+Synthesis and Strategic Outlook
+The construction of a Private Personal Assistant using Archestra.ai and a Generative UI framework represents the convergence of containerized security and modern web capabilities.1 By centralizing tool execution in Archestra, developers can mitigate the inherent risks of agentic AI while providing a low-latency, observable environment for complex workflows.1
+The future of these systems lies in "Contextual Proactivity." As health data from Postgres and calendar data from Google Workspace are increasingly integrated, the assistant will move from reactive responses to proactive suggestions—alerting users to schedule conflicts or suggesting rest days based on biometric trends.54 The Model Context Protocol provides the standardized "language" for this integration, while Archestra and Next.js provide the "brain" and "interface" required to make it accessible to the end user.24
+Architects should prioritize "Selective Loading" and "Vendoring" of tool definitions to prevent upstream drift and optimize performance.56 By checking tool schemas directly into the codebase, the assistant remains resilient to changes in the underlying MCP servers while maintaining the ability to customize tool descriptions for specific models.57 This level of control, combined with the deterministic security of the Archestra platform, establishes a new benchmark for private, agentic personal computing.
+Works cited
+1. archestra-ai/archestra: Secure cloud-native MCP registry, gateway & orchestrator - GitHub, accessed on February 13, 2026, https://github.com/archestra-ai/archestra
+2. Archestra Platform: The Open-Source Agentic Gateway for Secure AI, accessed on February 13, 2026, https://archestra.ai/blog/archestra-platform-release
+3. Archestra | Enterprise MCP Platform for AI Agents, accessed on February 13, 2026, https://archestra.ai/
+4. Streaming AI Agents Responses with Server-Sent Events (SSE): A Technical Case Study, accessed on February 13, 2026, https://akanuragkumar.medium.com/streaming-ai-agents-responses-with-server-sent-events-sse-a-technical-case-study-f3ac855d0755
+5. Quickstart | Archestra Docs, accessed on February 13, 2026, https://archestra.ai/docs/
+6. Server-Sent Events: The Perfect Match for Real-Time Chat - IBM TechXchange Community, accessed on February 13, 2026, https://community.ibm.com/community/user/blogs/anjana-m-r/2025/10/03/server-sent-events-the-perfect-match-for-real-time
+7. How I handled SSE streaming and state persistence for AI Agents in .NET 10 (Lessons Learned from an Open Source project) : r/dotnet - Reddit, accessed on February 13, 2026, https://www.reddit.com/r/dotnet/comments/1pzk2p1/how_i_handled_sse_streaming_and_state_persistence/
+8. Multi-Step & Generative UI | Vercel Academy, accessed on February 13, 2026, https://vercel.com/academy/ai-sdk/multi-step-and-generative-ui
+9. Architecture - Orchestra Solutions, accessed on February 13, 2026, https://developers.orchestrasolutions.com/concepts/architecture
+10. Chat Completions - Vercel, accessed on February 13, 2026, https://vercel.com/docs/ai-gateway/sdks-and-apis/openai-compat/chat-completions
+11. Building AI Agents with Docker MCP Toolkit: A Developer's Real-World Setup, accessed on February 13, 2026, https://www.docker.com/blog/docker-mcp-ai-agent-developer-setup/
+12. Configure MCP servers with YAML - Docker Docs, accessed on February 13, 2026, https://docs.docker.com/ai/gordon/mcp/yaml/
+13. CoinGecko MCP Server Documentation, accessed on February 13, 2026, https://mcp.api.coingecko.com/
+14. CoinGecko MCP Server (Beta), accessed on February 13, 2026, https://docs.coingecko.com/docs/mcp-server
+15. l4b4r4b4b4/portfolio-mcp: Portfolio analysis MCP server powered by mcp-refcache - Comprehensive portfolio metrics, optimization, and risk analysis for AI assistants - GitHub, accessed on February 13, 2026, https://github.com/l4b4r4b4b4/portfolio-mcp
+16. Brave Search MCP Server - GitHub, accessed on February 13, 2026, https://github.com/brave/brave-search-mcp-server
+17. Brave Search MCP - Model Context Protocol Integration for Cursor IDE | MCPCursor, accessed on February 13, 2026, https://mcpcursor.com/server/brave-search
+18. Brave Search MCP Server - AWS Marketplace, accessed on February 13, 2026, https://aws.amazon.com/marketplace/pp/prodview-6yt3tbr7ucbjy
+19. Brave Search MCP Server | GenAI Works, accessed on February 13, 2026, https://genai.works/mcp-servers/mcp-server
+20. Google Workspace MCP Server - playbooks, accessed on February 13, 2026, https://playbooks.com/mcp/aaronsb/google-workspace-mcp
+21. Google Workspace MCP Server, accessed on February 13, 2026, https://www.mcpserverfinder.com/servers/aaronsb/google-workspace-mcp
+22. Google Workspace | Awesome MCP Servers, accessed on February 13, 2026, https://mcpservers.org/servers/aaronsb/google-workspace-mcp
+23. Google Workspace | Awesome MCP Servers, accessed on February 13, 2026, https://mcpservers.org/servers/taylorwilsdon/google_workspace_mcp
+24. A Deep Dive into the Google Calendar MCP Server: The Definitive Guide for AI Engineers, accessed on February 13, 2026, https://skywork.ai/skypage/en/A-Deep-Dive-into-the-Google-Calendar-MCP-Server-The-Definitive-Guide-for-AI-Engineers/1971039029311172608
+25. HealthyApps/health-auto-export-server: Visualize Apple Health data in Grafana - GitHub, accessed on February 13, 2026, https://github.com/HealthyApps/health-auto-export-server
+26. Automations | HealthyApps Help Center - Health Auto Export, accessed on February 13, 2026, https://help.healthyapps.dev/en/health-auto-export/automations/
+27. Apple Health MCP Server - LobeHub, accessed on February 13, 2026, https://lobehub.com/mcp/aferdina-health_mcp
+28. Build Health Apps Faster with Apple Health MCP Server Guide, accessed on February 13, 2026, https://www.themomentum.ai/blog/apple-health-mcp-server-use-cases-for-developers
+29. How to Use Playwright MCP Server in Docker - TestDino, accessed on February 13, 2026, https://testdino.com/blog/playwright-mcp-docker/
+30. microsoft/playwright-mcp: Playwright MCP server - GitHub, accessed on February 13, 2026, https://github.com/microsoft/playwright-mcp
+31. Puppeteer | Awesome MCP Servers, accessed on February 13, 2026, https://mcpservers.org/servers/code-craka/puppeteer-mcp
+32. Is Docker an Orchestration Tool? | Data Orchestration Benefits, accessed on February 13, 2026, https://www.getorchestra.io/guides/is-docker-an-orchestration-tool-data-orchestration-benefits
+33. How to Add MCP Servers to Claude Code with Docker MCP Toolkit, accessed on February 13, 2026, https://www.docker.com/blog/add-mcp-servers-to-claude-code-with-mcp-toolkit/
+34. Generative User Interfaces - AI SDK UI, accessed on February 13, 2026, https://ai-sdk.dev/docs/ai-sdk-ui/generative-user-interfaces
+35. Advanced: Rendering UI with Language Models - AI SDK, accessed on February 13, 2026, https://ai-sdk.dev/docs/advanced/rendering-ui-with-language-models
+36. Getting Started: Next.js App Router - AI SDK, accessed on February 13, 2026, https://ai-sdk.dev/docs/getting-started/nextjs-app-router
+37. Calendar - Shadcn UI, accessed on February 13, 2026, https://ui.shadcn.com/docs/components/radix/calendar
+38. Tremor – Copy-and-Paste Tailwind CSS UI Components for Charts and Dashboards, accessed on February 13, 2026, https://tremor.so/
+39. 10+ Awesome Shadcn Examples you'll Love!, accessed on February 13, 2026, https://shadcnstudio.com/blog/shadcn-examples
+40. Model Context Protocol (MCP) - AI SDK, accessed on February 13, 2026, https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools
+41. AI SDK 4.2 - Vercel, accessed on February 13, 2026, https://vercel.com/blog/ai-sdk-4-2
+42. Vercel AI SDK with MCP: Connect Multiple AI Models to Your Enterprise Application, accessed on February 13, 2026, https://www.mintmcp.com/blog/connect-multiple-ai-models
+43. Shadcn Table, accessed on February 13, 2026, https://www.shadcn.io/ui/table
+44. Tremor: Vercel's React Library for Dashboard Components - Tailkits, accessed on February 13, 2026, https://tailkits.com/components/tremor/
+45. 5+ Shadcn Calendar Components - Creative Tim UI, accessed on February 13, 2026, https://www.creative-tim.com/ui/docs/components/calendar
+46. Line Chart • Docs - Tremor NPM, accessed on February 13, 2026, https://npm.tremor.so/docs/visualizations/line-chart
+47. Realtime Chart with Supabase and Tremor | by Varga György Márk | Shiwaforce - Medium, accessed on February 13, 2026, https://medium.com/shiwaforce/realtime-chart-with-supabase-and-tremor-169600a99bf6
+48. Shadcn Calendar Component - Free React Nextjs Template, accessed on February 13, 2026, https://www.shadcn.io/template/sersavan-shadcn-calendar-component
+49. Shadcn Calendar Component, accessed on February 13, 2026, https://allshadcn.com/components/shadcn-calendar/
+50. Comparison Sections - Pro Blocks | shadcndesign, accessed on February 13, 2026, https://www.shadcndesign.com/pro-blocks/comparison-sections
+51. Compare Products Blocks for Shadcn UI - Shadcnblocks.com, accessed on February 13, 2026, https://www.shadcnblocks.com/blocks/compare-products
+52. Compare Blocks for Shadcn UI, accessed on February 13, 2026, https://www.shadcnblocks.com/blocks/compare
+53. Observability | Archestra Docs, accessed on February 13, 2026, https://archestra.ai/docs/platform-observability
+54. Turning Apple Health Data Into Actionable Personal Fitness Insights (Our Hackathon Story), accessed on February 13, 2026, https://www.themomentum.ai/blog/turning-apple-health-data-into-actionable-personal-fitness-insights
+55. Apple Health MCP Server - AI Interface for Health Kit Data, accessed on February 13, 2026, https://www.themomentum.ai/open-source/mcp-apple-health-server
+56. vercel-labs/mcp-to-ai-sdk - GitHub, accessed on February 13, 2026, https://github.com/vercel-labs/mcp-to-ai-sdk
+57. Addressing security and quality issues with MCP tools in AI Agent - Vercel, accessed on February 13, 2026, https://vercel.com/blog/generate-static-ai-sdk-tools-from-mcp-servers-with-mcp-to-ai-sdk
