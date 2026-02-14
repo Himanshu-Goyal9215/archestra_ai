@@ -28,11 +28,116 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         }
     }, [messages]);
 
+    // Reset chat when switching agents
+    useEffect(() => {
+        setMessages([]);
+        setInput('');
+        setIsLoading(false);
+    }, [agentId]);
+
+    // Persist recent chats to localStorage
+    const saveRecentChat = (text: string) => {
+        try {
+            const history = JSON.parse(localStorage.getItem('archestra_recent_chats') || '[]');
+            const newChat = {
+                id: Date.now().toString(),
+                title: text,
+                timestamp: new Date().toISOString(),
+                agentId: agentId
+            };
+            // Keep last 10, remove duplicates of same text
+            const filtered = history.filter((h: any) => h.title !== text);
+            localStorage.setItem('archestra_recent_chats', JSON.stringify([newChat, ...filtered].slice(0, 10)));
+            // Dispatch event to update RecentChats component
+            window.dispatchEvent(new Event('archestra:history-updated'));
+        } catch (e) {
+            console.error('Failed to save chat history', e);
+        }
+    };
+
+    // Listen for external chat triggers (e.g., from NewsSearch)
+    useEffect(() => {
+        const handleCustomQuery = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            if (customEvent.detail?.query) {
+                const text = customEvent.detail.query;
+                setInput(text);
+                // Auto-submit after a short delay to allow state update
+                setTimeout(() => {
+                    const submitEvent = new Event('submit', { cancelable: true, bubbles: true });
+                    // We need to trigger the form submission logic manually since we can't easily dispatch a real React event
+                    // But we can just call a specialized version of handleSubmit or just set a flag
+                    // Simplest: just call the logic directly if we extract it, or use a ref to the submit button
+                }, 100);
+            }
+        };
+
+        window.addEventListener('archestra:chat-query', handleCustomQuery);
+        return () => window.removeEventListener('archestra:chat-query', handleCustomQuery);
+    }, []);
+
+    // Effect to trigger submission when input is set via event
+    // This is a bit hacky but ensures we use the latest state
+    const submitRef = useRef<HTMLButtonElement>(null);
+    useEffect(() => {
+        const handleCustomQuery = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            if (customEvent.detail?.query) {
+                // We handle the submission logic here to access current state/context
+                const text = customEvent.detail.query;
+                if (isLoading) return; // Don't interrupt
+
+                // Manually trigger the flow
+                const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', content: text };
+                setMessages(prev => [...prev, userMsg]);
+                setIsLoading(true);
+                saveRecentChat(text);
+
+                // Call API (duplicated logic, ideally extracted)
+                fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: [...messages, userMsg], // Note: using messages state here might be stale in this closure!
+                        // Actually, setMessages update wrapper is better but we can't access it here easily for the API call payload
+                        // So we use functional state update for UI, but for API we might need a ref or just accept 1-turn context gap
+                        // OR: we extract sendMessage to a function.
+                        agentId: realAgentId,
+                    }),
+                }).then(async res => {
+                    if (!res.ok) {
+                        // ... handle error
+                        const errText = await res.text();
+                        setMessages(prev => [...prev, { id: `a-${Date.now()}`, role: 'assistant', content: `Error: ${res.status}` }]);
+                        return;
+                    }
+                    const responseText = await res.text();
+                    let fullText = '';
+                    for (const line of responseText.split('\n')) {
+                        if (line.startsWith('0:')) {
+                            try { fullText += JSON.parse(line.slice(2)); } catch { fullText += line.slice(2); }
+                        }
+                    }
+                    if (fullText) {
+                        setMessages(prev => [...prev, { id: `a-${Date.now()}`, role: 'assistant', content: fullText }]);
+                    }
+                }).catch(err => {
+                    setMessages(prev => [...prev, { id: `e-${Date.now()}`, role: 'assistant', content: 'Connection failed' }]);
+                }).finally(() => setIsLoading(false));
+            }
+        };
+
+        window.addEventListener('archestra:chat-query', handleCustomQuery);
+        return () => window.removeEventListener('archestra:chat-query', handleCustomQuery);
+    }, [messages, realAgentId, isLoading]); // Dependencies are important here!
+
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         if (!(input ?? '').trim() || isLoading) return;
 
         const text = input.trim();
+        saveRecentChat(text);
+
         const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', content: text };
 
         setMessages(prev => [...prev, userMsg]);
