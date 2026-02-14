@@ -1,0 +1,41 @@
+[
+  {
+    "id": "1",
+    "title": "Project Review",
+    "date": "2026-02-15",
+    "time": "10:00",
+    "description": "Review Q1 project milestones",
+    "completed": false
+  },
+  {
+    "id": "2",
+    "title": "Client Meeting",
+    "date": "2026-02-15",
+    "time": "14:00",
+    "description": "Discuss deliverables with client team",
+    "completed": false
+  },
+  {
+    "id": "3",
+    "title": "Workout",
+    "date": "2026-02-15",
+    "time": "18:00",
+    "description": "Evening gym session",
+    "completed": false
+  },
+  {
+    "title": "Test Event",
+    "date": "2026-02-15",
+    "time": "11:00",
+    "description": "Test",
+    "id": "1771095038695",
+    "completed": false
+  },
+  {
+    "title": "group study",
+    "date": "2026-02-15",
+    "time": "19:00",
+    "id": "1771096162344",
+    "completed": false
+  }
+]

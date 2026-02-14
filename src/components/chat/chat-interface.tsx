@@ -39,13 +39,20 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         setInput('');
         setIsLoading(true);
 
+        // Route schedule agent to local LLM endpoint, others to Archestra A2A
+        const isSchedule = agentId === 'schedule';
+        const endpoint = isSchedule ? '/api/schedule-chat' : '/api/chat';
+
         try {
-            const res = await fetch('/api/chat', {
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [...messages, { role: 'user', content: text }],
-                    agentId: realAgentId,
+                    messages: [...messages, { role: 'user', content: text }].map(m => ({
+                        role: m.role,
+                        content: m.content,
+                    })),
+                    ...(isSchedule ? {} : { agentId: realAgentId }),
                 }),
             });
 
@@ -63,6 +70,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
             const responseText = await res.text();
             let fullText = '';
 
+            // Both endpoints return 0: prefixed lines
             for (const line of responseText.split('\n')) {
                 if (line.startsWith('0:')) {
                     try {
@@ -74,13 +82,15 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                 }
             }
 
-            if (fullText) {
+            if (fullText.trim()) {
                 const assistantMsg: ChatMessage = {
                     id: `a-${Date.now()}`,
                     role: 'assistant',
-                    content: fullText,
+                    content: fullText.trim(),
                 };
                 setMessages(prev => [...prev, assistantMsg]);
+
+
             }
         } catch (err: any) {
             console.error("Failed to send message:", err);
@@ -93,7 +103,8 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         } finally {
             setIsLoading(false);
         }
-    }, [input, isLoading, messages, realAgentId]);
+    }, [input, isLoading, messages, realAgentId, agentId]);
+
 
     return (
         <div className="flex flex-col h-full bg-white/50 dark:bg-gray-900/50">
