@@ -23,6 +23,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
         switch (pathname) {
             case '/': return 'Overview';
             case '/finance': return 'Financial Advisor';
+            case '/weather': return 'Weather Agent';
             case '/schedule': return 'Schedule Agent';
             case '/health': return 'Health Agent';
             case '/shopping': return 'Shopping Assistant';

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Home, LineChart, Calendar, Activity, Settings, User, ShoppingCart } from 'lucide-react';
+import { Home, LineChart, Calendar, Activity, Settings, User, ShoppingCart, CloudSun } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -14,6 +14,7 @@ export const Sidebar = () => {
     const menuItems = [
         { href: '/', label: 'Overview', icon: Home },
         { href: '/finance', label: 'Financial Advisor', icon: LineChart },
+        { href: '/weather', label: 'Weather Agent', icon: CloudSun },
         { href: '/schedule', label: 'Schedule Agent', icon: Calendar },
         { href: '/health', label: 'Health Agent', icon: Activity },
         { href: '/shopping', label: 'Shopping Assistant', icon: ShoppingCart },
