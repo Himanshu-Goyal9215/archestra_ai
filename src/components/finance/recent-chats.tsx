@@ -10,6 +10,7 @@ interface ChatHistoryItem {
     title: string;
     timestamp: string;
     agentId: string;
+    messages?: Array<{ id: string; role: string; content: string }>;
 }
 
 export const RecentChats = () => {
@@ -33,11 +34,21 @@ export const RecentChats = () => {
         return () => window.removeEventListener('archestra:history-updated', loadHistory);
     }, []);
 
-    const handleResumeChat = (query: string) => {
-        const event = new CustomEvent('archestra:chat-query', {
-            detail: { query }
-        });
-        window.dispatchEvent(event);
+    const handleResumeChat = (chat: ChatHistoryItem) => {
+        if (chat.messages && chat.messages.length > 0) {
+            // Restore the full conversation
+            const event = new CustomEvent('archestra:chat-restore', {
+                detail: { messages: chat.messages }
+            });
+            window.dispatchEvent(event);
+        }
+        // Old entries without messages — just populate input field
+        else {
+            const event = new CustomEvent('archestra:chat-query', {
+                detail: { query: chat.title }
+            });
+            window.dispatchEvent(event);
+        }
     };
 
     if (history.length === 0) {
@@ -58,7 +69,7 @@ export const RecentChats = () => {
                 {history.map((chat) => (
                     <div
                         key={chat.id}
-                        onClick={() => handleResumeChat(chat.title)}
+                        onClick={() => handleResumeChat(chat)}
                         className="group flex items-center justify-between p-3 rounded-xl bg-white/50 dark:bg-gray-800/50 border border-transparent hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all cursor-pointer"
                     >
                         <div className="flex items-center gap-3 overflow-hidden">
