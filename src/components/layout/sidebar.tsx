@@ -1,23 +1,24 @@
 "use client";
 
 import React from 'react';
-import { Home, LineChart, Calendar, Activity, Settings, User, ShoppingCart, CloudSun } from 'lucide-react';
+import { Home, LineChart, Calendar, Activity, Settings, CloudSun, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/auth-context';
 
 export const Sidebar = () => {
     const pathname = usePathname();
+    const { user, signOut } = useAuth();
 
     const menuItems = [
-        { href: '/', label: 'Overview', icon: Home },
-        { href: '/finance', label: 'Financial Advisor', icon: LineChart },
-        { href: '/weather', label: 'Weather Agent', icon: CloudSun },
-        { href: '/schedule', label: 'Schedule Agent', icon: Calendar },
-        { href: '/health', label: 'Health Agent', icon: Activity },
-        { href: '/shopping', label: 'Shopping Assistant', icon: ShoppingCart },
+        { href: '/dashboard', label: 'Overview', icon: Home },
+        { href: '/dashboard/finance', label: 'Financial Advisor', icon: LineChart },
+        { href: '/dashboard/weather', label: 'Weather Agent', icon: CloudSun },
+        { href: '/dashboard/schedule', label: 'Schedule Agent', icon: Calendar },
+        { href: '/dashboard/health', label: 'Health Agent', icon: Activity },
     ];
 
     return (
@@ -64,13 +65,24 @@ export const Sidebar = () => {
                     <span className="font-medium">Settings</span>
                 </Button>
                 <div className="flex items-center gap-3 px-4 py-3 mt-2 rounded-xl bg-white/5 border border-white/5">
-                    <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
-                        <User size={16} />
+                    {user?.photoURL ? (
+                        <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full" />
+                    ) : (
+                        <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-sm font-bold">
+                            {user?.displayName?.charAt(0) || 'U'}
+                        </div>
+                    )}
+                    <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-sm font-medium text-white truncate">{user?.displayName || 'User'}</span>
+                        <span className="text-xs text-gray-400 truncate">{user?.email || 'Pro Plan'}</span>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium text-white">User</span>
-                        <span className="text-xs text-gray-400">Pro Plan</span>
-                    </div>
+                    <button
+                        onClick={signOut}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        title="Sign out"
+                    >
+                        <LogOut size={16} />
+                    </button>
                 </div>
             </div>
         </div>

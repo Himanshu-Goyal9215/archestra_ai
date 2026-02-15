@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Bot, User } from 'lucide-react';
 import { PERSONAS } from '@/hooks/use-archestra-chat';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '@/contexts/auth-context';
 
 interface ChatMessage {
     id: string;
@@ -16,11 +19,12 @@ interface ChatMessage {
 
 export function ChatInterface({ agentId }: { agentId: string }) {
     const realAgentId = (PERSONAS as any)[agentId] || agentId;
-
+    const { user } = useAuth();
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const chatIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -33,25 +37,58 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         setMessages([]);
         setInput('');
         setIsLoading(false);
+        chatIdRef.current = null;
+
+        // Check for pending restore request from Dashboard
+        const pending = localStorage.getItem('archestra_pending_restore');
+        if (pending) {
+            try {
+                const data = JSON.parse(pending);
+                if (data.agentId === agentId) {
+                    setMessages(data.messages);
+                    chatIdRef.current = data.chatId;
+                    localStorage.removeItem('archestra_pending_restore');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
     }, [agentId]);
 
-    // Persist recent chats to localStorage (with full messages)
-    const saveRecentChat = (title: string, allMessages: ChatMessage[]) => {
+    // Persist chat to Firestore
+    const saveChatToFirestore = async (messagesToSave: ChatMessage[]) => {
+        if (!user?.uid) return;
+
         try {
-            const history = JSON.parse(localStorage.getItem('archestra_recent_chats') || '[]');
-            const newChat = {
-                id: Date.now().toString(),
-                title,
-                timestamp: new Date().toISOString(),
-                agentId: agentId,
-                messages: allMessages,
+            const id = chatIdRef.current || Date.now().toString();
+            if (!chatIdRef.current) chatIdRef.current = id;
+
+            const collName = `chats_${agentId}`;
+            const chatDoc = doc(db, collName, id);
+
+            // Title is the first user message content, or "New Chat"
+            const firstUserMsg = messagesToSave.find(m => m.role === 'user');
+            const title = firstUserMsg ? firstUserMsg.content.slice(0, 50) : 'New Chat';
+
+            const data: any = {
+                id,
+                userId: user.uid,
+                agentId,
+                messages: messagesToSave,
+                updatedAt: serverTimestamp(),
             };
-            // Keep last 10, remove duplicates of same title
-            const filtered = history.filter((h: any) => h.title !== title);
-            localStorage.setItem('archestra_recent_chats', JSON.stringify([newChat, ...filtered].slice(0, 10)));
-            window.dispatchEvent(new Event('archestra:history-updated'));
+
+            // Only set title/createdAt if it's a new chat session to avoid overwriting custom titles if we had them
+            // But for now we just overwrite ensuring title is fresh
+            if (messagesToSave.length <= 2) {
+                data.title = title;
+                data.createdAt = serverTimestamp();
+            }
+
+            await setDoc(chatDoc, data, { merge: true });
+
         } catch (e) {
-            console.error('Failed to save chat history', e);
+            console.error("Error saving chat:", e);
         }
     };
 
@@ -64,11 +101,14 @@ export function ChatInterface({ agentId }: { agentId: string }) {
             }
         };
 
-        // Listen for chat restore (from RecentChats)
+        // Listen for chat restore (from OverviewChats)
         const handleRestore = (e: Event) => {
             const customEvent = e as CustomEvent;
             if (customEvent.detail?.messages) {
                 setMessages(customEvent.detail.messages);
+                if (customEvent.detail.chatId) {
+                    chatIdRef.current = customEvent.detail.chatId;
+                }
             }
         };
 
@@ -94,9 +134,10 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         setInput('');
         setIsLoading(true);
 
-        // Route schedule agent to local LLM endpoint, others to Archestra A2A
+        // Route schedule agent to local LLM endpoint, health agent to health-chat, others to Archestra A2A
         const isSchedule = agentId === 'schedule';
-        const endpoint = isSchedule ? '/api/schedule-chat' : '/api/chat';
+        const isHealth = agentId === 'health';
+        const endpoint = isSchedule ? '/api/schedule-chat' : isHealth ? '/api/health-chat' : '/api/chat';
 
         try {
             const res = await fetch(endpoint, {
@@ -107,7 +148,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                         role: m.role,
                         content: m.content,
                     })),
-                    ...(isSchedule ? {} : { agentId: realAgentId }),
+                    ...(isSchedule ? {} : isHealth ? { userId: (window as any).__archestra_uid } : { agentId: realAgentId }),
                 }),
             });
 
@@ -146,7 +187,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                 setMessages(prev => {
                     const updated = [...prev, assistantMsg];
                     // Save with full conversation after assistant replies
-                    saveRecentChat(text, updated);
+                    saveChatToFirestore(updated);
                     return updated;
                 });
             }

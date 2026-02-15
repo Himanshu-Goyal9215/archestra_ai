@@ -21,17 +21,16 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
 
     const getTitle = () => {
         switch (pathname) {
-            case '/': return 'Overview';
-            case '/finance': return 'Financial Advisor';
-            case '/weather': return 'Weather Agent';
-            case '/schedule': return 'Schedule Agent';
-            case '/health': return 'Health Agent';
-            case '/shopping': return 'Shopping Assistant';
+            case '/dashboard': return 'Overview';
+            case '/dashboard/finance': return 'Financial Advisor';
+            case '/dashboard/weather': return 'Weather Agent';
+            case '/dashboard/schedule': return 'Schedule Agent';
+            case '/dashboard/health': return 'Health Agent';
             default: return 'Agent';
         }
     };
 
-    const agentId = pathname === '/' ? 'general' : pathname.substring(1);
+    const agentId = pathname === '/dashboard' ? 'general' : pathname.replace('/dashboard/', '');
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         e.preventDefault();

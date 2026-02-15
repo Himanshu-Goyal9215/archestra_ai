@@ -18,6 +18,7 @@ const WeatherAgent: React.FC = () => {
     const [forecast, setForecast] = useState<ForecastData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+    const [now, setNow] = useState(new Date());
 
     const fetchWeather = async (q: string) => {
         if (!q.trim()) return;
@@ -40,6 +41,8 @@ const WeatherAgent: React.FC = () => {
 
     useEffect(() => {
         fetchWeather(city);
+        const timer = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(timer);
     }, []);
 
     const handleSearch = (e: React.FormEvent) => {
@@ -66,38 +69,65 @@ const WeatherAgent: React.FC = () => {
     const aqiInfo = getAqiLabel(aqi?.["us-epa-index"]);
 
     const getLocalTime = () => {
-        if (!loc?.localtime) return '--:--';
-        const date = new Date(loc.localtime);
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        if (!loc?.tz_id) return '--:--';
+        try {
+            return now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: loc.tz_id
+            });
+        } catch (e) {
+            return '--:--';
+        }
     };
 
     const getLocalDate = () => {
-        if (!loc?.localtime) return '';
-        const date = new Date(loc.localtime);
-        return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        if (!loc?.tz_id) return '';
+        try {
+            return now.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+                timeZone: loc.tz_id
+            });
+        } catch (e) {
+            return '';
+        }
     };
 
     return (
         <div className="max-w-6xl mx-auto space-y-6 pb-10">
-            {/* Search Bar */}
-            <form onSubmit={handleSearch} className="flex gap-3 items-center">
-                <div className="relative flex-1">
-                    <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <Input
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        placeholder="Search city (e.g. 'London', 'Tokyo', 'New York')"
-                        className="pl-9 py-5 bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus-visible:ring-sky-500"
-                    />
-                </div>
+            {/* Search Bar & Refresh */}
+            <div className="flex gap-3 items-center">
+                <form onSubmit={handleSearch} className="flex-1 flex gap-3">
+                    <div className="relative flex-1">
+                        <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            placeholder="Search city (e.g. 'London', 'Tokyo', 'New York')"
+                            className="pl-9 py-5 bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus-visible:ring-sky-500"
+                        />
+                    </div>
+                    <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="h-[42px] px-5 bg-sky-600 hover:bg-sky-700 text-white"
+                    >
+                        {isLoading ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
+                    </Button>
+                </form>
                 <Button
-                    type="submit"
+                    onClick={() => fetchWeather(city)}
                     disabled={isLoading}
-                    className="h-[42px] px-5 bg-sky-600 hover:bg-sky-700 text-white"
+                    variant="outline"
+                    className="h-[42px] px-4 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    title="Refresh Weather"
                 >
-                    {isLoading ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
+                    <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
                 </Button>
-            </form>
+            </div>
 
             {error && (
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm text-center">
@@ -120,7 +150,7 @@ const WeatherAgent: React.FC = () => {
                                 {loc.name}, {loc.region}
                             </h2>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                {loc.country} • {getLocalDate()} • Updated {cur.last_updated}
+                                {loc.country} • {getLocalDate()} • {getLocalTime()}
                             </p>
                         </div>
                         {cur.is_day ? (

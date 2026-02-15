@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { NewsSearch } from '@/components/finance/news-search';
-import { RecentChats } from '@/components/finance/recent-chats';
 import { TrendsWidget } from '@/components/finance/trends-widget';
 
 export default function FinancePage() {
@@ -15,10 +14,9 @@ export default function FinancePage() {
                 </p>
             </div>
 
-            {/* Row 1: Trends + Recent Chats side by side */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            {/* Trends - Full Width */}
+            <div className="mb-6">
                 <TrendsWidget />
-                <RecentChats />
             </div>
 
             {/* Row 2: News Search (shifted down, with scrollable results) */}
