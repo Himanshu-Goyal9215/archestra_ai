@@ -13,16 +13,20 @@ interface ScheduleEvent {
     completed: boolean;
 }
 
+import { useAuth } from '@/contexts/auth-context';
+
 export const ScheduleOverview = () => {
+    const { user } = useAuth();
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
     const [stats, setStats] = useState({ total: 0, pending: 0 });
     const [loading, setLoading] = useState(true);
 
     const fetchTodaySchedule = async () => {
+        if (!user?.uid) return;
         try {
             // Fetch events for "today"
             const today = new Date().toISOString().split('T')[0];
-            const res = await fetch(`/api/schedule?date=${today}`);
+            const res = await fetch(`/api/schedule?date=${today}&userId=${user.uid}`);
             if (!res.ok) throw new Error('Failed to fetch schedule');
 
             const data: ScheduleEvent[] = await res.json();
@@ -44,7 +48,7 @@ export const ScheduleOverview = () => {
 
     useEffect(() => {
         fetchTodaySchedule();
-    }, []);
+    }, [user?.uid]);
 
     const formatTime12 = (t: string) => {
         const [h, m] = t.split(':').map(Number);

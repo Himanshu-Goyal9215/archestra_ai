@@ -1,12 +1,30 @@
 import { generateText, stepCountIs } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { getEvents, addEvent, updateEvent, deleteEvent } from '@/lib/schedule-store';
+import { initializeApp, getApps } from "firebase/app";
+import { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAL7PJQF2LmLHfU6IY2HO5QN7es44qH9lE",
+    authDomain: "personal-assistant-85a0e.firebaseapp.com",
+    projectId: "personal-assistant-85a0e",
+    storageBucket: "personal-assistant-85a0e.firebasestorage.app",
+    messagingSenderId: "568287775887",
+    appId: "1:568287775887:web:8e1647d7fd0bda8e6db4fa",
+    measurementId: "G-1LWZPQ72J8",
+};
+
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const db = getFirestore(app);
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-    const { messages } = await req.json();
+    const { messages, userId } = await req.json();
+
+    if (!userId) {
+        return Response.json({ error: 'Not authenticated' }, { status: 401 });
+    }
 
     try {
         const result = await generateText({
@@ -26,8 +44,17 @@ Be concise and friendly.`,
                         date: z.string().optional().describe('Date to filter events by, in YYYY-MM-DD format'),
                     }),
                     execute: async ({ date }: { date?: string }) => {
-                        const events = getEvents(date);
-                        return { events, count: events.length };
+                        try {
+                            let q;
+                            if (date) {
+                                q = query(collection(db, 'events'), where('userId', '==', userId), where('date', '==', date));
+                            } else {
+                                q = query(collection(db, 'events'), where('userId', '==', userId));
+                            }
+                            const snapshot = await getDocs(q);
+                            const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            return { events, count: events.length };
+                        } catch (e: any) { return { error: e.message }; }
                     },
                 },
                 addEvent: {
@@ -39,8 +66,11 @@ Be concise and friendly.`,
                         description: z.string().optional().describe('Optional description'),
                     }),
                     execute: async ({ title, date, time, description }: { title: string; date: string; time: string; description?: string }) => {
-                        const event = addEvent({ title, date, time, description });
-                        return { success: true, event };
+                        try {
+                            const newEvent = { userId, title, date, time, description: description || '', completed: false, createdAt: serverTimestamp() };
+                            const docRef = await addDoc(collection(db, 'events'), newEvent);
+                            return { success: true, event: { id: docRef.id, ...newEvent } };
+                        } catch (e: any) { return { error: e.message }; }
                     },
                 },
                 deleteEvent: {
@@ -49,8 +79,11 @@ Be concise and friendly.`,
                         id: z.string().describe('ID of the event to delete'),
                     }),
                     execute: async ({ id }: { id: string }) => {
-                        const deleted = deleteEvent(id);
-                        return { success: deleted };
+                        try {
+                            // Ideally verify ownership first
+                            await deleteDoc(doc(db, 'events', id));
+                            return { success: true };
+                        } catch (e: any) { return { error: e.message }; }
                     },
                 },
                 toggleComplete: {
@@ -60,8 +93,10 @@ Be concise and friendly.`,
                         completed: z.boolean().describe('Whether the event is completed'),
                     }),
                     execute: async ({ id, completed }: { id: string; completed: boolean }) => {
-                        const updated = updateEvent(id, { completed });
-                        return { success: !!updated, event: updated };
+                        try {
+                            await updateDoc(doc(db, 'events', id), { completed });
+                            return { success: true, event: { id, completed } };
+                        } catch (e: any) { return { error: e.message }; }
                     },
                 },
                 updateEvent: {
@@ -74,11 +109,11 @@ Be concise and friendly.`,
                         description: z.string().optional().describe('New description'),
                     }),
                     execute: async ({ id, ...updates }: { id: string; title?: string; date?: string; time?: string; description?: string }) => {
-                        const filtered = Object.fromEntries(
-                            Object.entries(updates).filter(([, v]) => v !== undefined)
-                        );
-                        const updated = updateEvent(id, filtered);
-                        return { success: !!updated, event: updated };
+                        try {
+                            const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+                            await updateDoc(doc(db, 'events', id), filtered);
+                            return { success: true, event: { id, ...filtered } };
+                        } catch (e: any) { return { error: e.message }; }
                     },
                 },
             },

@@ -138,6 +138,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         const isSchedule = agentId === 'schedule';
         const isHealth = agentId === 'health';
         const endpoint = isSchedule ? '/api/schedule-chat' : isHealth ? '/api/health-chat' : '/api/chat';
+        const currentUserId = (window as any).__archestra_uid || user?.uid;
 
         try {
             const res = await fetch(endpoint, {
@@ -148,7 +149,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                         role: m.role,
                         content: m.content,
                     })),
-                    ...(isSchedule ? {} : isHealth ? { userId: (window as any).__archestra_uid } : { agentId: realAgentId }),
+                    ...(isSchedule || isHealth ? { userId: currentUserId } : { agentId: realAgentId }),
                 }),
             });
 

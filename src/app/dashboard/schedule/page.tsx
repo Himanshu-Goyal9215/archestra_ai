@@ -15,7 +15,10 @@ interface ScheduleEvent {
     completed: boolean;
 }
 
+import { useAuth } from '@/contexts/auth-context';
+
 export default function SchedulePage() {
+    const { user } = useAuth();
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
     const [allEvents, setAllEvents] = useState<ScheduleEvent[]>([]);
     const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -32,17 +35,19 @@ export default function SchedulePage() {
 
     // Fetch events for the selected date
     const fetchEvents = useCallback(async () => {
-        const res = await fetch(`/api/schedule?date=${selectedDate}`);
+        if (!user?.uid) return;
+        const res = await fetch(`/api/schedule?date=${selectedDate}&userId=${user.uid}`);
         const data = await res.json();
         setEvents(data);
-    }, [selectedDate]);
+    }, [selectedDate, user?.uid]);
 
     // Fetch ALL events for the current month (for badge counts)
     const fetchAllEvents = useCallback(async () => {
-        const res = await fetch(`/api/schedule`);
+        if (!user?.uid) return;
+        const res = await fetch(`/api/schedule?userId=${user.uid}`);
         const data = await res.json();
         setAllEvents(data);
-    }, []);
+    }, [user?.uid]);
 
     useEffect(() => { fetchEvents(); }, [fetchEvents]);
     useEffect(() => { fetchAllEvents(); }, [fetchAllEvents]);
@@ -55,12 +60,13 @@ export default function SchedulePage() {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newTitle.trim()) return;
+        if (!newTitle.trim() || !user?.uid) return;
         setLoading(true);
         await fetch('/api/schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                userId: user.uid,
                 title: newTitle.trim(),
                 date: selectedDate,
                 time: newTime,
@@ -77,16 +83,18 @@ export default function SchedulePage() {
     };
 
     const handleToggle = async (id: string, completed: boolean) => {
+        if (!user?.uid) return;
         await fetch('/api/schedule', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, completed: !completed }),
+            body: JSON.stringify({ id, userId: user.uid, completed: !completed }),
         });
         fetchEvents();
     };
 
     const handleDelete = async (id: string) => {
-        await fetch(`/api/schedule?id=${id}`, { method: 'DELETE' });
+        if (!user?.uid) return;
+        await fetch(`/api/schedule?id=${id}&userId=${user.uid}`, { method: 'DELETE' });
         fetchEvents();
         fetchAllEvents();
     };
