@@ -224,7 +224,7 @@ const WeatherAgent: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.15 }}
-                    className="group relative bg-gradient-to-br from-gray-900/80 to-gray-800/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/50 hover:border-sky-500/30 transition-all cursor-pointer overflow-hidden"
+                    className="group relative bg-gradient-to-br from-white/60 to-white/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-white/40 dark:border-gray-700/50 hover:border-sky-500/50 transition-all cursor-pointer overflow-hidden shadow-sm"
                     onClick={() => {
                         const event = new CustomEvent('archestra:chat-query', { detail: { query: `What time is it in ${city}? Show me timezone details.` } });
                         window.dispatchEvent(event);
@@ -233,11 +233,11 @@ const WeatherAgent: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-br from-sky-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative flex flex-col items-center text-center gap-3">
                         <div className="p-3 rounded-2xl bg-sky-500/10">
-                            <Clock size={36} className="text-sky-400" />
+                            <Clock size={36} className="text-sky-600 dark:text-sky-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-white mb-0.5">{getLocalTime()}</p>
-                            <p className="text-sm text-gray-400 font-medium">Local Time</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white mb-0.5">{getLocalTime()}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Local Time</p>
                         </div>
                     </div>
                 </motion.div>
@@ -247,7 +247,7 @@ const WeatherAgent: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 }}
-                    className="group relative bg-gradient-to-br from-gray-900/80 to-gray-800/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/50 hover:border-emerald-500/30 transition-all cursor-pointer overflow-hidden"
+                    className="group relative bg-gradient-to-br from-white/60 to-white/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-white/40 dark:border-gray-700/50 hover:border-emerald-500/50 transition-all cursor-pointer overflow-hidden shadow-sm"
                     onClick={() => {
                         const event = new CustomEvent('archestra:chat-query', { detail: { query: `What is the air quality like in ${city}? Give me a detailed breakdown.` } });
                         window.dispatchEvent(event);
@@ -256,12 +256,12 @@ const WeatherAgent: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative flex flex-col items-center text-center gap-3">
                         <div className="p-3 rounded-2xl bg-emerald-500/10">
-                            <Gauge size={36} className="text-emerald-400" />
+                            <Gauge size={36} className="text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <div>
                             <p className={`text-xl font-bold ${aqiInfo.color} mb-0.5`}>{aqiInfo.label}</p>
-                            <p className="text-sm text-gray-400 font-medium">Air Quality</p>
-                            {aqi && <p className="text-xs text-gray-500 mt-0.5">PM2.5: {aqi.pm2_5?.toFixed(1)}</p>}
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Air Quality</p>
+                            {aqi && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">PM2.5: {aqi.pm2_5?.toFixed(1)}</p>}
                         </div>
                     </div>
                 </motion.div>
@@ -271,7 +271,7 @@ const WeatherAgent: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.25 }}
-                    className="group relative bg-gradient-to-br from-gray-900/80 to-gray-800/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/50 hover:border-amber-500/30 transition-all cursor-pointer overflow-hidden"
+                    className="group relative bg-gradient-to-br from-white/60 to-white/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-white/40 dark:border-gray-700/50 hover:border-amber-500/50 transition-all cursor-pointer overflow-hidden shadow-sm"
                     onClick={() => {
                         const event = new CustomEvent('archestra:chat-query', { detail: { query: `What is the UV index in ${city}? Should I wear sunscreen?` } });
                         window.dispatchEvent(event);
@@ -280,11 +280,11 @@ const WeatherAgent: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative flex flex-col items-center text-center gap-3">
                         <div className="p-3 rounded-2xl bg-amber-500/10">
-                            <Sun size={36} className="text-amber-400" />
+                            <Sun size={36} className="text-amber-600 dark:text-amber-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-white mb-0.5">{cur?.uv ?? '--'}</p>
-                            <p className="text-sm text-gray-400 font-medium">UV Index</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white mb-0.5">{cur?.uv ?? '--'}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">UV Index</p>
                         </div>
                     </div>
                 </motion.div>
@@ -294,7 +294,7 @@ const WeatherAgent: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="group relative bg-gradient-to-br from-gray-900/80 to-gray-800/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/50 hover:border-orange-500/30 transition-all cursor-pointer overflow-hidden"
+                    className="group relative bg-gradient-to-br from-white/60 to-white/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-white/40 dark:border-gray-700/50 hover:border-orange-500/50 transition-all cursor-pointer overflow-hidden shadow-sm"
                     onClick={() => {
                         const event = new CustomEvent('archestra:chat-query', { detail: { query: `What are the sunrise and sunset times in ${city} today?` } });
                         window.dispatchEvent(event);
@@ -303,12 +303,12 @@ const WeatherAgent: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative flex flex-col items-center text-center gap-3">
                         <div className="flex gap-2">
-                            <div className="p-2 rounded-xl bg-orange-500/10"><Sunrise size={24} className="text-orange-400" /></div>
-                            <div className="p-2 rounded-xl bg-indigo-500/10"><Sunset size={24} className="text-indigo-400" /></div>
+                            <div className="p-2 rounded-xl bg-orange-500/10"><Sunrise size={24} className="text-orange-600 dark:text-orange-400" /></div>
+                            <div className="p-2 rounded-xl bg-indigo-500/10"><Sunset size={24} className="text-indigo-600 dark:text-indigo-400" /></div>
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-white">{astro?.sunrise ?? '--'} / {astro?.sunset ?? '--'}</p>
-                            <p className="text-sm text-gray-400 font-medium">Sunrise & Sunset</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">{astro?.sunrise ?? '--'} / {astro?.sunset ?? '--'}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Sunrise & Sunset</p>
                         </div>
                     </div>
                 </motion.div>
@@ -318,7 +318,7 @@ const WeatherAgent: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.35 }}
-                    className="group relative bg-gradient-to-br from-gray-900/80 to-gray-800/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/50 hover:border-violet-500/30 transition-all cursor-pointer overflow-hidden"
+                    className="group relative bg-gradient-to-br from-white/60 to-white/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-white/40 dark:border-gray-700/50 hover:border-violet-500/50 transition-all cursor-pointer overflow-hidden shadow-sm"
                     onClick={() => {
                         const event = new CustomEvent('archestra:chat-query', { detail: { query: `What timezone is ${city} in? How does it compare to UTC?` } });
                         window.dispatchEvent(event);
@@ -327,11 +327,11 @@ const WeatherAgent: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative flex flex-col items-center text-center gap-3">
                         <div className="p-3 rounded-2xl bg-violet-500/10">
-                            <Globe size={36} className="text-violet-400" />
+                            <Globe size={36} className="text-violet-600 dark:text-violet-400" />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-white mb-0.5 truncate max-w-[160px]">{loc?.tz_id ?? '--'}</p>
-                            <p className="text-sm text-gray-400 font-medium">Timezone</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white mb-0.5 truncate max-w-[160px]">{loc?.tz_id ?? '--'}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Timezone</p>
                         </div>
                     </div>
                 </motion.div>
@@ -341,7 +341,7 @@ const WeatherAgent: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.4 }}
-                    className="group relative bg-gradient-to-br from-gray-900/80 to-gray-800/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/50 hover:border-cyan-500/30 transition-all cursor-pointer overflow-hidden"
+                    className="group relative bg-gradient-to-br from-white/60 to-white/90 dark:from-gray-800/80 dark:to-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-white/40 dark:border-gray-700/50 hover:border-cyan-500/50 transition-all cursor-pointer overflow-hidden shadow-sm"
                     onClick={() => {
                         const event = new CustomEvent('archestra:chat-query', { detail: { query: `What is the visibility and cloud cover in ${city}?` } });
                         window.dispatchEvent(event);
@@ -350,11 +350,11 @@ const WeatherAgent: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative flex flex-col items-center text-center gap-3">
                         <div className="p-3 rounded-2xl bg-cyan-500/10">
-                            <Eye size={36} className="text-cyan-400" />
+                            <Eye size={36} className="text-cyan-600 dark:text-cyan-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-white mb-0.5">{cur ? `${cur.vis_km} km` : '--'}</p>
-                            <p className="text-sm text-gray-400 font-medium">Visibility</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white mb-0.5">{cur ? `${cur.vis_km} km` : '--'}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Visibility</p>
                         </div>
                     </div>
                 </motion.div>
